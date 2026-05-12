@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from './ui/Card';
+import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Switch } from './ui/Switch';
 import { Plus, Trash2, Clock, Calendar } from 'lucide-react';
