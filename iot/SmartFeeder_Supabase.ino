@@ -7,14 +7,14 @@
 #include <Servo.h>
 
 // --- KONFIGURASI WIFI ---
-const char* ssid = "NAMA_WIFI_ANDA";
-const char* password = "PASSWORD_WIFI_ANDA";
+const char* ssid = "Flyys";
+const char* password = "Ra150105";
 
 // --- KONFIGURASI SUPABASE ---
 // Ambil dari file .env proyek Anda
 const char* supabase_url = "https://smpluwvjqrpaqvwrwity.supabase.co"; 
-const char* supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."; // Isi dengan Anon Key lengkap
-const char* device_id = "MASUKKAN_ID_DARI_TABLE_DEVICE_STATUS"; // Cek di dashboard Supabase
+const char* supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtcGx1d3ZqcXJwYXF2d3J3aXR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MjI5NTQsImV4cCI6MjA5NDA5ODk1NH0.6OIZ3e_ioJz87wm9Mmu99FHJGwrRklKQwevjWbreUdk"; 
+const char* device_id = "72dc30fb-6952-4a19-9834-d2addb4bc426"; 
 
 // --- HARDWARE ---
 RTC_DS3231 rtc;

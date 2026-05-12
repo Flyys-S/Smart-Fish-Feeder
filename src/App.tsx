@@ -2,6 +2,7 @@ import { Header } from './components/Header';
 import { ControlCenter } from './components/ControlCenter';
 import { ScheduleManager } from './components/ScheduleManager';
 import { HistoryLog } from './components/HistoryLog';
+import { FeedingStats } from './components/FeedingStats';
 import { useFeeder } from './hooks/useFeeder';
 import { motion } from 'framer-motion';
 
@@ -34,6 +35,8 @@ function App() {
       <Header isOnline={isOnline} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-8 py-10">
+        <FeedingStats history={history} />
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Left Column: Control & History */}
