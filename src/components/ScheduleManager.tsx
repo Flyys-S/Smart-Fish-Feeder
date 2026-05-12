@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Switch } from './ui/Switch';
-import { Plus, Trash2, Clock, Calendar, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Clock, Calendar } from 'lucide-react';
 import type { Schedule } from '../hooks/useFeeder';
 import { motion, AnimatePresence } from 'framer-motion';
 

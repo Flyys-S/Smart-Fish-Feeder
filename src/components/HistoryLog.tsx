@@ -52,7 +52,7 @@ export const HistoryLog = ({ history }: HistoryLogProps) => {
                       )}
                     </div>
                     <p className="text-xs font-bold text-white/80 mt-0.5 letter-spacing-tight">
-                      {formatDistanceToNow(parseISO(item.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(parseISO(item.timestamp), { addSuffix: true })}
                     </p>
                   </div>
                 </div>

@@ -15,11 +15,11 @@ export const FeedingStats = ({ history }: FeedingStatsProps) => {
     const week = startOfWeek(now);
 
     const todayCount = history.filter(item => 
-      isAfter(parseISO(item.created_at), today) && item.success
+      isAfter(parseISO(item.timestamp), today) && item.success
     ).length;
 
     const weekCount = history.filter(item => 
-      isAfter(parseISO(item.created_at), week) && item.success
+      isAfter(parseISO(item.timestamp), week) && item.success
     ).length;
 
     return { todayCount, weekCount };
