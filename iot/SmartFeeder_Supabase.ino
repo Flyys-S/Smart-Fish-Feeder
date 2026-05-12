@@ -31,31 +31,46 @@ int menitTerakhirMakan = -1;
 
 void setup() {
   Serial.begin(115200);
+  delay(1000);
+  Serial.println("\n--- SMART FISH FEEDER STARTING ---");
   
   servoKatup.attach(pinServo);
   servoKatup.write(sudutTutup);
   
   Wire.begin(D2, D1);
   if (!rtc.begin()) {
-    Serial.println("RTC tidak ditemukan!");
+    Serial.println("[ERROR] RTC tidak ditemukan! Cek kabel SDA/SCL.");
+  } else {
+    Serial.println("[OK] RTC Terdeteksi.");
   }
 
   // Koneksi WiFi
+  Serial.print("Menghubungkan ke WiFi: ");
+  Serial.println(ssid);
   WiFi.begin(ssid, password);
-  Serial.print("Menghubungkan ke WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+  
+  int retry = 0;
+  while (WiFi.status() != WL_CONNECTED && retry < 30) {
+    delay(1000);
     Serial.print(".");
+    retry++;
   }
-  Serial.println("\nWiFi Terhubung!");
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n[OK] WiFi Terhubung!");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\n[ERROR] Gagal menyambung ke WiFi. Cek SSID/Password atau pastikan WiFi 2.4GHz!");
+  }
 }
 
 void loop() {
   if (WiFi.status() == WL_CONNECTED) {
     unsigned long now = millis();
 
-    // 1. Heartbeat & Cek Trigger Manual (Setiap 3 detik)
-    if (now - lastCheckTrigger > 3000) {
+    // 1. Cek Trigger Manual (Setiap 1 detik agar lebih responsif)
+    if (now - lastCheckTrigger > 1000) {
       checkManualTrigger();
       lastCheckTrigger = now;
     }
@@ -66,14 +81,22 @@ void loop() {
       lastHeartbeat = now;
     }
 
-    // 3. Cek Jadwal Otomatis (Setiap 1 menit)
-    checkAutoSchedule();
+    // 3. Cek Jadwal Otomatis (Setiap 30 detik untuk akurasi menit)
+    if (now - lastCheckSchedule > 30000) {
+      checkAutoSchedule();
+      lastCheckSchedule = now;
+    }
+  } else {
+    // Jika WiFi putus, coba hubungkan kembali
+    Serial.println("WiFi Terputus! Menghubungkan kembali...");
+    WiFi.begin(ssid, password);
+    delay(5000);
   }
 }
 
 void sendHeartbeat() {
   WiFiClientSecure client;
-  client.setInsecure(); // Supabase butuh HTTPS
+  client.setInsecure();
   HTTPClient http;
 
   String url = String(supabase_url) + "/rest/v1/device_status?id=eq." + device_id;
@@ -83,6 +106,13 @@ void sendHeartbeat() {
   http.addHeader("Content-Type", "application/json");
   
   int httpResponseCode = http.PATCH("{\"last_heartbeat\": \"now()\"}");
+  if (httpResponseCode > 0) {
+    Serial.print("Heartbeat Sent! Code: ");
+    Serial.println(httpResponseCode);
+  } else {
+    Serial.print("Heartbeat Failed: ");
+    Serial.println(http.errorToString(httpResponseCode));
+  }
   http.end();
 }
 
@@ -104,7 +134,7 @@ void checkManualTrigger() {
     
     bool trigger = doc[0]["manual_feed_trigger"];
     if (trigger) {
-      Serial.println("Trigger Manual Terdeteksi!");
+      Serial.println("--- Trigger Manual Terdeteksi! ---");
       jalankanPakan("MANUAL");
       resetManualTrigger();
     }
@@ -127,7 +157,14 @@ void resetManualTrigger() {
 
 void checkAutoSchedule() {
   DateTime sekarang = rtc.now();
+  
+  // Pastikan hanya cek satu kali per menit
   if (sekarang.minute() == menitTerakhirMakan) return;
+  
+  Serial.print("Mengecek Jadwal pada ");
+  Serial.print(sekarang.hour());
+  Serial.print(":");
+  Serial.println(sekarang.minute());
 
   WiFiClientSecure client;
   client.setInsecure();
@@ -141,7 +178,7 @@ void checkAutoSchedule() {
   int httpResponseCode = http.GET();
   if (httpResponseCode == 200) {
     String payload = http.getString();
-    DynamicJsonDocument doc(1024);
+    DynamicJsonDocument doc(2048);
     deserializeJson(doc, payload);
     JsonArray arr = doc.as<JsonArray>();
 
@@ -149,14 +186,15 @@ void checkAutoSchedule() {
     sprintf(jamSekarang, "%02d:%02d", sekarang.hour(), sekarang.minute());
 
     for (JsonObject v : arr) {
-      if (String(v["time"].as<const char*>()) == String(jamSekarang)) {
-        Serial.println("Waktunya Makan (Otomatis)!");
+      if (String(v["time"].as<const char*>()).substring(0, 5) == String(jamSekarang)) {
+        Serial.println("--- Waktunya Makan (Otomatis)! ---");
         int durasi = v["duration"].as<int>() * 1000;
         jalankanPakanCustom(durasi, "AUTO");
-        menitTerakhirMakan = sekarang.minute();
         break;
       }
     }
+    // Tandai menit ini sudah dicek agar tidak spamming
+    menitTerakhirMakan = sekarang.minute();
   }
   http.end();
 }

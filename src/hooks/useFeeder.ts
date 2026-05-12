@@ -143,11 +143,6 @@ export const useFeeder = () => {
   const triggerManualFeed = async () => {
     if (!status) return;
     await supabase.from('device_status').update({ manual_feed_trigger: true }).eq('id', status.id);
-    
-    // Auto-reset trigger after a short delay
-    setTimeout(async () => {
-        await supabase.from('device_status').update({ manual_feed_trigger: false }).eq('id', status.id);
-    }, 2000);
   };
 
   return {
