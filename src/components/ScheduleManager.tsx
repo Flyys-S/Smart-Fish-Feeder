@@ -5,6 +5,8 @@ import { Switch } from './ui/Switch';
 import { Plus, Trash2, Clock, Calendar } from 'lucide-react';
 import type { Schedule } from '../hooks/useFeeder';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TimePicker } from './ui/TimePicker';
+import { format, parse } from 'date-fns';
 
 interface ScheduleManagerProps {
   schedules: Schedule[];
@@ -58,31 +60,33 @@ export const ScheduleManager = ({ schedules, onAdd, onDelete, onToggle }: Schedu
             className="overflow-hidden"
           >
             <Card className="glass-card bg-white/[0.05] border-white/10">
-              <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-6 items-end">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-white/30 tracking-widest ml-1">Feed Time</label>
-                  <input
-                    type="time"
-                    value={newTime}
-                    onChange={(e) => setNewTime(e.target.value)}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-blue-500/50 transition-all"
-                  />
+              <CardContent className="p-8 flex flex-col items-center space-y-8">
+                <div className="w-full flex flex-col lg:flex-row gap-12 items-center justify-center">
+                  <div className="flex-shrink-0">
+                    <TimePicker
+                      value={newTime}
+                      onChange={setNewTime}
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col space-y-6 w-full max-w-xs">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase text-white/30 tracking-widest ml-1">Feed Duration (sec)</label>
+                      <input
+                        type="number"
+                        value={newDuration}
+                        onChange={(e) => setNewDuration(parseInt(e.target.value))}
+                        className="w-full bg-black/60 border border-white/10 rounded-xl p-4 text-white font-bold outline-none focus:border-blue-500/50 transition-all"
+                      />
+                    </div>
+                    <Button 
+                      className="w-full h-[56px] rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 active:scale-95 transition-all" 
+                      onClick={handleAdd}
+                    >
+                      Add Routine
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-white/30 tracking-widest ml-1">Duration (sec)</label>
-                  <input
-                    type="number"
-                    value={newDuration}
-                    onChange={(e) => setNewDuration(parseInt(e.target.value))}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-blue-500/50 transition-all"
-                  />
-                </div>
-                <Button 
-                  className="w-full h-[46px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase tracking-widest text-xs" 
-                  onClick={handleAdd}
-                >
-                  Confirm Schedule
-                </Button>
               </CardContent>
             </Card>
           </motion.div>
@@ -109,10 +113,15 @@ export const ScheduleManager = ({ schedules, onAdd, onDelete, onToggle }: Schedu
                       <Clock size={28} />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-3xl font-black tabular-nums tracking-tighter leading-none">{schedule.time}</h3>
+                      <div className="flex items-baseline gap-2">
+                        <h3 className="text-4xl font-black tabular-nums tracking-tighter leading-none">
+                          {format(parse(schedule.time, 'HH:mm:ss', new Date()), 'hh:mm')}
+                        </h3>
+                        <span className="text-xs font-black text-accent uppercase tracking-widest">
+                          {format(parse(schedule.time, 'HH:mm:ss', new Date()), 'a')}
+                        </span>
                         {schedule.is_active && (
-                          <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                          <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse ml-1" />
                         )}
                       </div>
                       <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.2em] mt-1">

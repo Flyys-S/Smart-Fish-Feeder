@@ -6,7 +6,7 @@ interface HeaderProps {
 }
 
 export const Header = ({ isOnline }: HeaderProps) => {
-  const { hoursMinutes, seconds, dayMonth } = useTime();
+  const { hoursMinutes, seconds, ampm, dayMonth } = useTime();
 
   return (
     <header className="flex items-center justify-between py-6 px-4 sm:px-8 border-b border-white/5 glass sticky top-0 z-50">
@@ -19,7 +19,10 @@ export const Header = ({ isOnline }: HeaderProps) => {
         <div className="flex flex-col items-end">
           <div className="flex items-baseline space-x-1">
             <span className="text-3xl font-bold tracking-tighter tabular-nums">{hoursMinutes}</span>
-            <span className="text-lg font-medium text-white/30 tabular-nums">{seconds}</span>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-accent leading-none mb-1">{ampm}</span>
+              <span className="text-lg font-medium text-white/30 tabular-nums leading-none">{seconds}</span>
+            </div>
           </div>
         </div>
 

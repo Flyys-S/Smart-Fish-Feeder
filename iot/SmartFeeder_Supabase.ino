@@ -5,10 +5,11 @@
 #include <Wire.h>
 #include <RTClib.h>
 #include <Servo.h>
+#include <time.h>
 
 // --- KONFIGURASI WIFI ---
-const char* ssid = "Flyys";
-const char* password = "Ra150105";
+const char* ssid = "Sam";
+const char* password = "modalll cokk";
 
 // --- KONFIGURASI SUPABASE ---
 // Ambil dari file .env proyek Anda
@@ -60,6 +61,22 @@ void setup() {
     Serial.println("\n[OK] WiFi Terhubung!");
     Serial.print("IP Address: ");
     Serial.println(WiFi.localIP());
+
+    // Sinkronisasi Jam Internet (NTP) - WIB (GMT+7)
+    configTime(7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+    Serial.print("Menyinkronkan Jam Internet");
+    time_t now = time(nullptr);
+    while (now < 1000000) {
+      delay(500);
+      Serial.print(".");
+      now = time(nullptr);
+    }
+    Serial.println("\n[OK] Waktu Terupdate dari Internet!");
+
+    // Update RTC dari Jam Internet
+    struct tm * ptm = localtime(&now);
+    rtc.adjust(DateTime(ptm->tm_year + 1900, ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_hour, ptm->tm_min, ptm->tm_sec));
+    Serial.printf("Waktu RTC sekarang: %02d:%02d:%02d\n", ptm->tm_hour, ptm->tm_min, ptm->tm_sec);
   } else {
     Serial.println("\n[ERROR] Gagal menyambung ke WiFi. Cek SSID/Password atau pastikan WiFi 2.4GHz!");
   }
@@ -156,20 +173,22 @@ void resetManualTrigger() {
 }
 
 void checkAutoSchedule() {
-  DateTime sekarang = rtc.now();
+  DateTime now = rtc.now();
+  int jam = now.hour();
+  int menit = now.minute();
   
-  // Pastikan hanya cek satu kali per menit
-  if (sekarang.minute() == menitTerakhirMakan) return;
-  
-  Serial.print("Mengecek Jadwal pada ");
-  Serial.print(sekarang.hour());
-  Serial.print(":");
-  Serial.println(sekarang.minute());
+  // Debug waktu setiap 1 menit (saat menit berubah)
+  if (menit != menitTerakhirMakan) {
+    Serial.printf("[SYSTEM] Jam RTC: %02d:%02d | Cek Jadwal...\n", jam, menit);
+  } else {
+    return; // Sudah diproses di menit ini
+  }
 
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
-
+  
+  // Ambil semua jadwal aktif
   String url = String(supabase_url) + "/rest/v1/schedules?is_active=eq.true&select=time,duration";
   http.begin(client, url);
   http.addHeader("apikey", supabase_key);
@@ -178,23 +197,46 @@ void checkAutoSchedule() {
   int httpResponseCode = http.GET();
   if (httpResponseCode == 200) {
     String payload = http.getString();
-    DynamicJsonDocument doc(2048);
-    deserializeJson(doc, payload);
+    DynamicJsonDocument doc(2048); // Kapasitas lebih besar
+    DeserializationError error = deserializeJson(doc, payload);
+
+    if (error) {
+      Serial.print("[JSON] Gagal parsing: ");
+      Serial.println(error.c_str());
+      return;
+    }
+
     JsonArray arr = doc.as<JsonArray>();
+    bool foundMatch = false;
 
-    char jamSekarang[6];
-    sprintf(jamSekarang, "%02d:%02d", sekarang.hour(), sekarang.minute());
+    for (JsonObject s : arr) {
+      String schedTime = s["time"].as<String>(); 
+      if (schedTime.length() < 5) continue;
 
-    for (JsonObject v : arr) {
-      if (String(v["time"].as<const char*>()).substring(0, 5) == String(jamSekarang)) {
-        Serial.println("--- Waktunya Makan (Otomatis)! ---");
-        int durasi = v["duration"].as<int>() * 1000;
-        jalankanPakanCustom(durasi, "AUTO");
-        break;
+      // Parsing format HH:mm:ss atau HH:mm menggunakan substring
+      int sJam = schedTime.substring(0, 2).toInt();
+      int sMenit = schedTime.substring(3, 5).toInt();
+      
+      // Munculkan di log setiap ada jadwal yang diperiksa
+      Serial.printf("[DEBUG] Jadwal DB: %02d:%02d | RTC: %02d:%02d\n", sJam, sMenit, jam, menit);
+
+      if (jam == sJam && menit == sMenit) {
+        Serial.printf(">>> MATCH! Jadwal %02d:%02d ditemukan.\n", sJam, sMenit);
+        int durasi = s["duration"] | 3;
+        jalankanPakanCustom(durasi * 1000, "AUTO");
+        menitTerakhirMakan = menit;
+        foundMatch = true;
+        break; 
       }
     }
-    // Tandai menit ini sudah dicek agar tidak spamming
-    menitTerakhirMakan = sekarang.minute();
+    
+    if (!foundMatch) {
+      // Tandai menit ini sudah dicek meskipun tidak ada jadwal
+      menitTerakhirMakan = menit;
+    }
+
+  } else {
+    Serial.printf("[HTTP] Gagal cek jadwal. Error: %d\n", httpResponseCode);
   }
   http.end();
 }
@@ -204,9 +246,20 @@ void jalankanPakan(String tipe) {
 }
 
 void jalankanPakanCustom(int durasi, String tipe) {
+  Serial.printf("[ACT] Menjalankan Pakan (%s) selama %d ms...\n", tipe.c_str(), durasi);
+  
+  servoKatup.attach(pinServo); 
+  delay(100);
+  
   servoKatup.write(sudutBuka);
   delay(durasi);
+  
   servoKatup.write(sudutTutup);
+  delay(500); 
+  
+  servoKatup.detach(); // Lepas agar tidak interferensi dengan WiFi
+  Serial.println("[ACT] Selesai menggerakkan servo.");
+  
   catatRiwayat(tipe);
 }
 
@@ -221,6 +274,13 @@ void catatRiwayat(String tipe) {
   http.addHeader("Content-Type", "application/json");
   
   String body = "{\"type\": \"" + tipe + "\", \"success\": true}";
-  http.POST(body);
+  int httpResponseCode = http.POST(body);
+  
+  if (httpResponseCode > 0) {
+    Serial.printf("[LOG] Riwayat tercatat: %d\n", httpResponseCode);
+  } else {
+    Serial.printf("[LOG] Gagal catat riwayat: %s\n", http.errorToString(httpResponseCode).c_str());
+  }
+  
   http.end();
 }

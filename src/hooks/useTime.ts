@@ -13,9 +13,10 @@ export const useTime = () => {
   }, []);
 
   return {
-    fullTime: format(time, 'HH:mm:ss'),
-    hoursMinutes: format(time, 'HH:mm'),
+    fullTime: format(time, 'hh:mm:ss a'),
+    hoursMinutes: format(time, 'hh:mm'),
     seconds: format(time, 'ss'),
+    ampm: format(time, 'a'),
     dayMonth: format(time, 'EEEE, d MMMM'),
     raw: time
   };
